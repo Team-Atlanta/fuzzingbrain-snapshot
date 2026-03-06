@@ -1,0 +1,36 @@
+##############################################################################
+#                        CRS Compose Configuration                           #
+#              Example for fuzzing-brain (bug-finding + bug-fixing)          #
+##############################################################################
+
+# --- General Settings -------------------------------------------------------
+run_env: local
+docker_registry: local
+
+# --- Infrastructure ---------------------------------------------------------
+oss_crs_infra:
+  cpuset: "0-3"
+  memory: "16G"
+
+# --- CRS (fuzzing-brain) ---------------------------------------------------
+fuzzing-brain:
+  source:
+    local_path: /home/hanqing/agents/CRSes/aixcc-teams/afc-crs-all-you-need-is-a-fuzzing-brain
+  cpuset: "4-15"
+  memory: "48G"
+  llm_budget: 100
+  additional_env:
+    # Set your API keys here (or export them in your shell environment)
+    # ANTHROPIC_API_KEY: sk-ant-xxx
+    # OPENAI_API_KEY: sk-xxx
+    # GEMINI_API_KEY: xxx
+    # Strategy configuration
+    STRATEGY_ENABLE_PATCHING: "true"
+    FUZZER_PER_FUZZER_TIMEOUT_MINUTES: "60"
+
+# --- LLM Configuration -----------------------------------------------------
+llm_config:
+  litellm:
+    mode: internal
+    internal:
+      config_path: /home/hanqing/agents/CRSes/aixcc-teams/afc-crs-all-you-need-is-a-fuzzing-brain/oss-crs/example/litellm-config.yaml
