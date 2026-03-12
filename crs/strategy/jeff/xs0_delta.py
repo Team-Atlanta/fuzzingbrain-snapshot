@@ -2535,7 +2535,7 @@ def doPoV(log_file, initial_msg, fuzzer_path, fuzzer_name, sanitizer, project_di
 
             same_project_fuzzers = get_same_project_fuzzers(fuzzer_path)
 
-            if not hasattr(update_blob_testing, 'logged_fuzzers'):
+            if not hasattr(doPoV, 'logged_fuzzers'):
 
                 log_message(log_file, f"[INFO] Found {len(same_project_fuzzers)} fuzzer(s) in same project:")
 
@@ -2543,7 +2543,7 @@ def doPoV(log_file, initial_msg, fuzzer_path, fuzzer_name, sanitizer, project_di
 
                     log_message(log_file, f"  - {os.path.basename(spf)}")
 
-                update_blob_testing.logged_fuzzers = True
+                doPoV.logged_fuzzers = True
 
             
 

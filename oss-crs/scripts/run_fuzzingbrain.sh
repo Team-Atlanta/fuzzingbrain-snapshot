@@ -341,6 +341,10 @@ if [ -d "$WORKSPACE" ]; then
     done
 fi
 
+# Give libCRS watchers time to sync artifacts to SUBMIT_DIR
+echo "[fuzzing-brain] Waiting for libCRS to sync artifacts..."
+sleep 10
+
 # Cleanup
 kill $SUBMIT_POV_PID $SUBMIT_SEED_PID $SUBMIT_PATCH_PID $FORWARD_PID 2>/dev/null || true
 
