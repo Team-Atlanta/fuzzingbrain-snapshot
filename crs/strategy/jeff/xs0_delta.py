@@ -1642,20 +1642,19 @@ def run_fuzzer_with_input(log_file, fuzzer_path, project_dir, focus, blob_path, 
                 if not docker_image:
                     log_message(log_file, f"Failed to find docker image for {project_name}")
                     return False, f"Failed to find docker image for {project_name}"
-                
+
                 log_message(log_file, f"Found docker image for {project_name}: {docker_image}")
 
                 docker_cmd = [
-                    "docker", "run", "--rm",
-                    "--platform", "linux/amd64",
-                    "-e", "FUZZING_ENGINE=libfuzzer",
-                    "-e", f"SANITIZER={sanitizer}",
-                    # "-e", "UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1",
-                    "-e", "ARCHITECTURE=x86_64",
-                    "-e", f"PROJECT_NAME={project_name}",
-                    "-v", f"{sanitizer_project_dir}:/src/{project_name}",
-                    "-v", f"{out_dir_x}:/out",
-                    "-v", f"{work_dir}:/work",
+                        "docker", "run", "--rm",
+                        "--platform", "linux/amd64",
+                        "-e", "FUZZING_ENGINE=libfuzzer",
+                        "-e", f"SANITIZER={sanitizer}",
+                        "-e", "ARCHITECTURE=x86_64",
+                        "-e", f"PROJECT_NAME={project_name}",
+                        "-v", f"{sanitizer_project_dir}:/src/{project_name}",
+                        "-v", f"{out_dir_x}:/out",
+                        "-v", f"{work_dir}:/work",
                     docker_image,
                     f"/out/{fuzzer_name}",
                     # f"--instrumentation_includes=org.apache.zookeeper.**",

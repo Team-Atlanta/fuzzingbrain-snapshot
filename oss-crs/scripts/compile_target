@@ -10,3 +10,8 @@ libCRS submit-build-output "$OUT" build
 
 # Submit source tree for later analysis
 libCRS submit-build-output "$SRC" src
+
+# Submit build-time fetch dir (contains diff, bug-candidates) if available
+if [ -d "/OSS_CRS_FETCH_DIR" ] && [ "$(ls -A /OSS_CRS_FETCH_DIR 2>/dev/null)" ]; then
+    libCRS submit-build-output /OSS_CRS_FETCH_DIR fetch || true
+fi

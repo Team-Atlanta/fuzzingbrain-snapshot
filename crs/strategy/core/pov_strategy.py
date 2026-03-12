@@ -354,46 +354,74 @@ Please write a Python script that generates the blob file as 'x.bin'.
                     except Exception as e:
                         self.logger.warning(f"Failed to find docker image for gcr.io/oss-fuzz/{project_name}: {str(e)}")
 
-                if not docker_image:
-                    self.logger.error(f"Failed to find docker image for {project_name}")
-                    return False, f"Failed to find docker image for {project_name}"
+                if docker_image:
+                    self.logger.log(f"Found docker image: {docker_image}")
 
-                self.logger.log(f"Found docker image: {docker_image}")
+                    # Build Docker command
+                    docker_cmd = [
+                        "docker", "run", "--rm",
+                        "--platform", "linux/amd64",
+                        "-e", "FUZZING_ENGINE=libfuzzer",
+                        "-e", f"SANITIZER={sanitizer}",
+                        "-e", "ARCHITECTURE=x86_64",
+                        "-e", f"PROJECT_NAME={project_name}",
+                        "-v", f"{sanitizer_project_dir}:/src/{project_name}",
+                        "-v", f"{out_dir_x}:/out",
+                        "-v", f"{work_dir}:/work",
+                        docker_image,
+                        f"/out/{fuzzer_name}",
+                        "-timeout=30",
+                        "-timeout_exitcode=99",
+                        f'/out/{unique_blob_name}'
+                    ]
 
-                # Build Docker command
-                docker_cmd = [
-                    "docker", "run", "--rm",
-                    "--platform", "linux/amd64",
-                    "-e", "FUZZING_ENGINE=libfuzzer",
-                    "-e", f"SANITIZER={sanitizer}",
-                    "-e", "ARCHITECTURE=x86_64",
-                    "-e", f"PROJECT_NAME={project_name}",
-                    "-v", f"{sanitizer_project_dir}:/src/{project_name}",
-                    "-v", f"{out_dir_x}:/out",
-                    "-v", f"{work_dir}:/work",
-                    docker_image,
-                    f"/out/{fuzzer_name}",
-                    "-timeout=30",
-                    "-timeout_exitcode=99",
-                    f'/out/{unique_blob_name}'
-                ]
+                    # Add coverage options for control flow analysis (if enabled)
+                    if hasattr(self.config, 'use_control_flow') and self.config.use_control_flow:
+                        if not is_c_project:
+                            # For Java projects (e.g., zookeeper)
+                            if self.config.project_name == "zookeeper":
+                                docker_cmd.insert(-3, f"--instrumentation_includes=org.apache.zookeeper.**")
+                            docker_cmd.insert(-3, f"--coverage_dump=/out/coverage.exec")
 
-                # Add coverage options for control flow analysis (if enabled)
-                if hasattr(self.config, 'use_control_flow') and self.config.use_control_flow:
-                    if not is_c_project:
-                        # For Java projects (e.g., zookeeper)
-                        if self.config.project_name == "zookeeper":
-                            docker_cmd.insert(-3, f"--instrumentation_includes=org.apache.zookeeper.**")
-                        docker_cmd.insert(-3, f"--coverage_dump=/out/coverage.exec")
+                    self.logger.log(f"Running Docker command: {' '.join(docker_cmd)}")
 
-                self.logger.log(f"Running Docker command: {' '.join(docker_cmd)}")
+                    result = subprocess.run(
+                        docker_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+                else:
+                    # Fallback: run fuzzer binary directly (no Docker available)
+                    self.logger.log(f"No docker image found, running fuzzer directly: {self.config.fuzzer_path}")
+                    fuzzer_binary = self.config.fuzzer_path
+                    if not os.path.isfile(fuzzer_binary):
+                        # Try the out directory copy
+                        fuzzer_binary = os.path.join(out_dir_x, fuzzer_name)
+                    if not os.path.isfile(fuzzer_binary):
+                        self.logger.error(f"Fuzzer binary not found at {self.config.fuzzer_path} or {fuzzer_binary}")
+                        return False, f"Fuzzer binary not found"
 
-                result = subprocess.run(
-                    docker_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
+                    env = os.environ.copy()
+                    env["FUZZING_ENGINE"] = "libfuzzer"
+                    env["SANITIZER"] = sanitizer
+                    env["PROJECT_NAME"] = project_name
+
+                    direct_cmd = [
+                        fuzzer_binary,
+                        "-timeout=30",
+                        "-timeout_exitcode=99",
+                        docker_blob_path,
+                    ]
+                    self.logger.log(f"Running direct command: {' '.join(direct_cmd)}")
+
+                    result = subprocess.run(
+                        direct_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        env=env,
+                    )
 
             # Analyze result
             combined_output = result.stderr + "\n" + result.stdout

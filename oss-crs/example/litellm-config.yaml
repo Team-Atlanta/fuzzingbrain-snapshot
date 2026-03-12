@@ -1,41 +1,59 @@
 model_list:
   #########################################
-  # OPENAI API
+  # GEMINI API (primary)
   #########################################
-  - model_name: gpt-4o
+  - model_name: gemini-2.5-pro
     litellm_params:
-      model: openai/gpt-4o
-      api_key: os.environ/OPENAI_API_KEY
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
 
-  - model_name: gpt-4o-mini
+  - model_name: gemini-2.5-flash
     litellm_params:
-      model: openai/gpt-4o-mini
-      api_key: os.environ/OPENAI_API_KEY
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
 
-  - model_name: chatgpt-4o-latest
+  - model_name: gemini-2.0-flash
     litellm_params:
-      model: openai/chatgpt-4o-latest
-      api_key: os.environ/OPENAI_API_KEY
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
 
-  - model_name: o4-mini
-    litellm_params:
-      model: openai/o4-mini
-      api_key: os.environ/OPENAI_API_KEY
+  #########################################
+  # OPENAI API (uncomment if you have the key)
+  #########################################
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: openai/gpt-4o
+  #     api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: o3
-    litellm_params:
-      model: openai/o3
-      api_key: os.environ/OPENAI_API_KEY
+  # - model_name: gpt-4o-mini
+  #   litellm_params:
+  #     model: openai/gpt-4o-mini
+  #     api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: o3-mini
-    litellm_params:
-      model: openai/o3-mini
-      api_key: os.environ/OPENAI_API_KEY
+  # - model_name: chatgpt-4o-latest
+  #   litellm_params:
+  #     model: openai/chatgpt-4o-latest
+  #     api_key: os.environ/OPENAI_API_KEY
 
-  - model_name: gpt-4.1
-    litellm_params:
-      model: openai/gpt-4.1
-      api_key: os.environ/OPENAI_API_KEY
+  # - model_name: o4-mini
+  #   litellm_params:
+  #     model: openai/o4-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # - model_name: o3
+  #   litellm_params:
+  #     model: openai/o3
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # - model_name: o3-mini
+  #   litellm_params:
+  #     model: openai/o3-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # - model_name: gpt-4.1
+  #   litellm_params:
+  #     model: openai/gpt-4.1
+  #     api_key: os.environ/OPENAI_API_KEY
 
   #########################################
   # ANTHROPIC API (uncomment if you have the key)
@@ -66,19 +84,87 @@ model_list:
   #     api_key: os.environ/ANTHROPIC_API_KEY
 
   #########################################
-  # GEMINI API (uncomment if you have the key)
+  # MODEL ALIASES — route fallback models through Gemini
+  # These catch model names from FuzzingBrain's fallback chains
+  # so they don't fail with "invalid model name".
+  # Remove these if you have the real API keys above.
   #########################################
-  # - model_name: gemini-2.5-pro
-  #   litellm_params:
-  #     model: gemini/gemini-2.5-pro
-  #     api_key: os.environ/GEMINI_API_KEY
+  - model_name: claude-sonnet-4-5-20250929
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
 
-  # - model_name: gemini-2.5-flash
-  #   litellm_params:
-  #     model: gemini/gemini-2.5-flash
-  #     api_key: os.environ/GEMINI_API_KEY
+  - model_name: claude-opus-4-20250514
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
 
-  # - model_name: gemini-2.0-flash
-  #   litellm_params:
-  #     model: gemini/gemini-2.0-flash
-  #     api_key: os.environ/GEMINI_API_KEY
+  - model_name: claude-sonnet-4-20250514
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: claude-3-7-sonnet-latest
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: chatgpt-4o-latest
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gpt-4o
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gpt-4.1
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: o3
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: o3-mini
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: o4-mini
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gemini-2.5-flash-lite-preview-06-17
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gemini-2.5-pro-preview-03-25
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gemini-2.5-pro-preview-05-06
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: gemini-2.0-pro-exp-02-05
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY

@@ -27,6 +27,8 @@ fuzzing-brain:
     # Strategy configuration
     STRATEGY_ENABLE_PATCHING: "true"
     FUZZER_PER_FUZZER_TIMEOUT_MINUTES: "60"
+    # Default model — use one that has a valid API key in litellm-config
+    AI_MODEL: "gemini-2.5-flash"
 
 # --- LLM Configuration -----------------------------------------------------
 llm_config:

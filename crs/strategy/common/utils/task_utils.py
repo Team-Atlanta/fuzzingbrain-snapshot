@@ -162,35 +162,50 @@ def extract_and_save_crash_input(
                 if logger:
                     logger.warning(f"Failed to find docker image for gcr.io/oss-fuzz/{project_name}: {str(e)}")
 
-        if not docker_image:
+        if docker_image:
             if logger:
-                logger.error(f"Failed to find docker image for {project_name}")
-            return False, ""
+                logger.log(f"Found docker image for {project_name}: {docker_image}")
 
-        if logger:
-            logger.log(f"Found docker image for {project_name}: {docker_image}")
-
-        docker_cmd = [
-            "docker", "run", "--rm",
-            "--platform", "linux/amd64",
-            "-e", "FUZZING_ENGINE=libfuzzer",
-            "-e", f"SANITIZER={sanitizer}",
-            "-e", "ARCHITECTURE=x86_64",
-            "-e", f"PROJECT_NAME={project_name}",
-            "-v", f"{sanitizer_project_dir}:/src/{project_name}",
-            "-v", f"{out_dir_x}:/out",
-            "-v", f"{os.path.dirname(crash_file)}:/crashes",
-            docker_image,
-            f"/out/{fuzzer_name}",
-            "-timeout=30",
-            "-timeout_exitcode=99",
-            f"/out/{relative_path}"
-        ]
+            docker_cmd = [
+                "docker", "run", "--rm",
+                "--platform", "linux/amd64",
+                "-e", "FUZZING_ENGINE=libfuzzer",
+                "-e", f"SANITIZER={sanitizer}",
+                "-e", "ARCHITECTURE=x86_64",
+                "-e", f"PROJECT_NAME={project_name}",
+                "-v", f"{sanitizer_project_dir}:/src/{project_name}",
+                "-v", f"{out_dir_x}:/out",
+                "-v", f"{os.path.dirname(crash_file)}:/crashes",
+                docker_image,
+                f"/out/{fuzzer_name}",
+                "-timeout=30",
+                "-timeout_exitcode=99",
+                f"/out/{relative_path}"
+            ]
+            run_cmd = docker_cmd
+            cmd_desc = "Docker"
+        else:
+            # Fallback: run fuzzer binary directly (no Docker available)
+            fuzzer_binary = os.path.join(out_dir_x, fuzzer_name)
+            if not os.path.isfile(fuzzer_binary):
+                # Try the parent out directory
+                fuzzer_binary = os.path.join(os.path.dirname(out_dir_x), fuzzer_name)
+            if not os.path.isfile(fuzzer_binary):
+                if logger:
+                    logger.error(f"No docker image and fuzzer binary not found for {project_name}")
+                return False, ""
+            run_cmd = [
+                fuzzer_binary,
+                "-timeout=30",
+                "-timeout_exitcode=99",
+                crash_file,
+            ]
+            cmd_desc = "direct"
 
         try:
             if logger:
-                logger.log(f"Running crash test: {' '.join(docker_cmd)}")
-            result = subprocess.run(docker_cmd, capture_output=True, text=True, timeout=60)
+                logger.log(f"Running crash test ({cmd_desc}): {' '.join(run_cmd)}")
+            result = subprocess.run(run_cmd, capture_output=True, text=True, timeout=60)
 
             # Check if the output indicates a crash
             crash_indicators = [

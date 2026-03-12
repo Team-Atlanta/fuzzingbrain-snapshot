@@ -50,9 +50,10 @@ fi
 # 2. Download build outputs from the build phase
 ###############################################################################
 echo "[fuzzing-brain] Downloading build outputs..."
-mkdir -p /out /src
+mkdir -p /out /src /bootup/fetch
 libCRS download-build-output build /out
 libCRS download-build-output src /src
+libCRS download-build-output fetch /bootup/fetch 2>/dev/null || true
 
 ###############################################################################
 # 3. Register submission directories with libCRS
@@ -135,6 +136,36 @@ language: ${LANGUAGE}
 YAML
 echo "[fuzzing-brain] Created project.yaml: language=$LANGUAGE, sanitizer=$SANITIZER_NAME"
 
+# Copy harness source files and build scripts from /src to project config dir
+# so find_fuzzer_source() can locate them.  In oss-fuzz, the harness .c/.cc
+# files and build.sh live under the oss-fuzz project dir, but after build
+# they end up as loose files in /src/ or in /src/fuzz/ etc.
+# Strategies expect them in fuzz-tooling/projects/<project>/.
+if [ -d "/src" ]; then
+    # Copy build.sh if present at /src level
+    for f in /src/build.sh /src/Dockerfile; do
+        [ -f "$f" ] && cp "$f" "$PROJ_CONFIG_DIR/" 2>/dev/null || true
+    done
+    # Copy harness source files from /src top-level
+    for ext in c cc cpp h java; do
+        for f in /src/*."$ext"; do
+            [ -f "$f" ] && cp "$f" "$PROJ_CONFIG_DIR/" 2>/dev/null || true
+        done
+    done
+    # Copy fuzz/ directory if it exists (common oss-fuzz layout)
+    if [ -d "/src/fuzz" ]; then
+        cp -a /src/fuzz "$PROJ_CONFIG_DIR/" 2>/dev/null || true
+    fi
+    # Also check for harness/ or tests/ directories
+    for d in harness harnesses test tests; do
+        if [ -d "/src/$d" ]; then
+            cp -a "/src/$d" "$PROJ_CONFIG_DIR/" 2>/dev/null || true
+        fi
+    done
+    HARNESS_COUNT=$(find "$PROJ_CONFIG_DIR" \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.java' \) 2>/dev/null | wc -l)
+    echo "[fuzzing-brain] Copied $HARNESS_COUNT harness source files to $PROJ_CONFIG_DIR"
+fi
+
 # Pre-built fuzzers from oss-crs build phase
 FUZZER_DIR="$WORKSPACE/fuzz-tooling/build/out/${PROJECT}-${SANITIZER_NAME}"
 mkdir -p "$FUZZER_DIR"
@@ -145,14 +176,48 @@ if [ -d "/out" ] && [ "$(ls -A /out 2>/dev/null)" ]; then
 fi
 
 # Delta diff (if available)
-if [ -f "/bootup/diffs/ref.diff" ]; then
-    mkdir -p "$WORKSPACE/diff"
-    cp /bootup/diffs/ref.diff "$WORKSPACE/diff/ref.diff"
-    echo "[fuzzing-brain] Found delta diff, running in delta mode"
-elif ls /bootup/diffs/*.diff 1>/dev/null 2>&1; then
-    mkdir -p "$WORKSPACE/diff"
-    cp /bootup/diffs/*.diff "$WORKSPACE/diff/ref.diff" 2>/dev/null || \
-    cp "$(ls /bootup/diffs/*.diff | head -1)" "$WORKSPACE/diff/ref.diff"
+# Check bootup fetch dir first, then OSS_CRS_FETCH_DIR (exchange dir)
+_found_diff=0
+for _diff_search in /bootup/diffs /OSS_CRS_FETCH_DIR/diffs /bootup/fetch/diffs; do
+    if [ "$_found_diff" = "1" ]; then break; fi
+    if [ -f "$_diff_search/ref.diff" ]; then
+        mkdir -p "$WORKSPACE/diff"
+        cp "$_diff_search/ref.diff" "$WORKSPACE/diff/ref.diff"
+        _found_diff=1
+    elif ls "$_diff_search"/*.diff 1>/dev/null 2>&1; then
+        mkdir -p "$WORKSPACE/diff"
+        cp "$(ls "$_diff_search"/*.diff | head -1)" "$WORKSPACE/diff/ref.diff"
+        _found_diff=1
+    fi
+done
+# Also search recursively in FETCH_DIR (exchange dir may nest under target/harness)
+if [ "$_found_diff" = "0" ] && [ -d "/OSS_CRS_FETCH_DIR" ]; then
+    _diff_file=$(find /OSS_CRS_FETCH_DIR -name "ref.diff" -type f 2>/dev/null | head -1)
+    if [ -n "$_diff_file" ]; then
+        mkdir -p "$WORKSPACE/diff"
+        cp "$_diff_file" "$WORKSPACE/diff/ref.diff"
+        _found_diff=1
+    fi
+fi
+# Check if diff was provided during build phase (build_fetch_dir)
+if [ "$_found_diff" = "0" ] && [ -d "/OSS_CRS_BUILD_OUT_DIR" ]; then
+    _diff_file=$(find /OSS_CRS_BUILD_OUT_DIR -name "ref.diff" -type f 2>/dev/null | head -1)
+    if [ -n "$_diff_file" ]; then
+        mkdir -p "$WORKSPACE/diff"
+        cp "$_diff_file" "$WORKSPACE/diff/ref.diff"
+        _found_diff=1
+    fi
+fi
+# Check if diff was bundled in the source tree (e.g. .aixcc/ref.diff)
+if [ "$_found_diff" = "0" ] && [ -d "/src" ]; then
+    _diff_file=$(find /src -name "ref.diff" -type f 2>/dev/null | head -1)
+    if [ -n "$_diff_file" ]; then
+        mkdir -p "$WORKSPACE/diff"
+        cp "$_diff_file" "$WORKSPACE/diff/ref.diff"
+        _found_diff=1
+    fi
+fi
+if [ "$_found_diff" = "1" ]; then
     echo "[fuzzing-brain] Found delta diff, running in delta mode"
 fi
 
@@ -168,7 +233,21 @@ fi
 python3 /opt/fuzzing-brain-oss-crs/setup_workspace.py
 
 ###############################################################################
-# 6. Configure environment for FuzzingBrain
+# 6. Install Docker wrapper (intercepts docker commands for direct execution)
+#    Strategies call `docker images` / `docker run` to validate crash inputs.
+#    In oss-crs containers there are no Docker images, so the wrapper fakes
+#    image lookups and translates `docker run` into direct binary execution.
+###############################################################################
+WRAPPER_DIR="/opt/fuzzing-brain-oss-crs/bin"
+mkdir -p "$WRAPPER_DIR"
+cp /opt/fuzzing-brain-oss-crs/docker-wrapper.sh "$WRAPPER_DIR/docker"
+chmod +x "$WRAPPER_DIR/docker"
+export REAL_DOCKER_PATH="$(which docker 2>/dev/null || true)"
+export PATH="$WRAPPER_DIR:$PATH"
+echo "[fuzzing-brain] Installed docker wrapper (direct execution mode)"
+
+###############################################################################
+# 7. Configure environment for FuzzingBrain
 ###############################################################################
 export LOCAL_TEST=1
 export STRATEGY_BASE_DIR=/app/strategy
@@ -195,12 +274,14 @@ if [ -n "$OSS_CRS_LLM_API_URL" ] && [ -n "$OSS_CRS_LLM_API_KEY" ]; then
     # Export proxy env vars for both the patch and client.py
     export OSS_CRS_LLM_API_URL
     export OSS_CRS_LLM_API_KEY
-    # Set OPENAI_API_KEY so Go config validation passes and litellm has a key
-    export OPENAI_API_KEY="${OPENAI_API_KEY:-$OSS_CRS_LLM_API_KEY}"
-    # Default model must match what the proxy actually serves.
-    # The Go backend validates that the matching API key env var is set.
-    # Use gpt-4o as default since it's always available in the example config.
-    export AI_MODEL="${AI_MODEL:-gpt-4o}"
+    # Set ALL provider API keys to the proxy key so Go config validation
+    # passes regardless of which model name is used.  The actual routing
+    # to the real provider happens inside the litellm proxy.
+    export OPENAI_API_KEY="${OSS_CRS_LLM_API_KEY}"
+    export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$OSS_CRS_LLM_API_KEY}"
+    export GEMINI_API_KEY="${GEMINI_API_KEY:-$OSS_CRS_LLM_API_KEY}"
+    # Default model — override via AI_MODEL env or compose additional_env
+    export AI_MODEL="${AI_MODEL:-gemini-2.5-flash}"
 fi
 
 # Per-fuzzer timeout (defaults to 60 minutes if not set)
@@ -210,7 +291,7 @@ if [ -n "$OSS_CRS_TIMEOUT" ]; then
 fi
 
 ###############################################################################
-# 7. Set up POV/patch artifact forwarding
+# 8. Set up POV/patch artifact forwarding
 #    Copy any POVs/patches found by FuzzingBrain to the libCRS submit dirs
 ###############################################################################
 _forward_artifacts() {
@@ -218,7 +299,7 @@ _forward_artifacts() {
         sleep 10
         # Forward POVs
         if [ -d "$WORKSPACE" ]; then
-            find "$WORKSPACE" -path "*/successful_povs/*" -name "*.bin" -newer /tmp/.last_pov_sync 2>/dev/null | while read -r pov; do
+            find "$WORKSPACE" -path "*/successful_povs*/*" -name "*.bin" -newer /tmp/.last_pov_sync 2>/dev/null | while read -r pov; do
                 cp "$pov" /artifacts/povs/ 2>/dev/null || true
             done
             # Forward patches
@@ -234,7 +315,7 @@ _forward_artifacts &
 FORWARD_PID=$!
 
 ###############################################################################
-# 8. Run FuzzingBrain
+# 9. Run FuzzingBrain
 ###############################################################################
 echo "[fuzzing-brain] Starting FuzzingBrain CRS..."
 echo "[fuzzing-brain] Workspace: $WORKSPACE"
@@ -252,7 +333,7 @@ echo "[fuzzing-brain] CRS exited with code $EXIT_CODE"
 # Final artifact sync
 sleep 2
 if [ -d "$WORKSPACE" ]; then
-    find "$WORKSPACE" -path "*/successful_povs/*" -name "*.bin" 2>/dev/null | while read -r pov; do
+    find "$WORKSPACE" -path "*/successful_povs*/*" -name "*.bin" 2>/dev/null | while read -r pov; do
         cp "$pov" /artifacts/povs/ 2>/dev/null || true
     done
     find "$WORKSPACE" -path "*/successful_patches/*" -name "*.diff" 2>/dev/null | while read -r patch; do

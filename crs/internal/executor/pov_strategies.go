@@ -309,7 +309,7 @@ func runBasicStrategies(fuzzer, taskDir, projectDir, fuzzDir, language string,
 			BaseDir:        "/app/strategy",
 			NewStrategyDir: "jeff",
 			POV: config.POVStrategyConfig{
-				BasicDeltaPattern:    "xs*_delta_new.py",
+				BasicDeltaPattern:    "xs*_delta.py",
 				BasicCFullPattern:    "xs*_c_full.py",
 				BasicJavaFullPattern: "xs*_java_full.py",
 				BasicFullPattern:     "xs*_full.py",
@@ -693,7 +693,7 @@ func runAdvancedPOVStrategiesWithTimeout(
 			BaseDir:        "/app/strategy",
 			NewStrategyDir: "jeff",
 			POV: config.POVStrategyConfig{
-				AdvancedDeltaPattern: "as*_delta_new.py",
+				AdvancedDeltaPattern: "as*_delta.py",
 				AdvancedFullPattern:  "as*_full.py",
 			},
 		}
