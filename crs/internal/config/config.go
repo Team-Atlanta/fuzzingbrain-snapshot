@@ -96,13 +96,13 @@ type StrategyConfig struct {
 // POVStrategyConfig holds POV strategy patterns and selection
 type POVStrategyConfig struct {
 	// Basic POV strategy patterns (xs* strategies)
-	BasicDeltaPattern    string `envconfig:"STRATEGY_POV_BASIC_DELTA_PATTERN" default:"xs*_delta.py"`
+	BasicDeltaPattern    string `envconfig:"STRATEGY_POV_BASIC_DELTA_PATTERN" default:"xs*_delta_new.py"`
 	BasicCFullPattern    string `envconfig:"STRATEGY_POV_BASIC_C_FULL_PATTERN" default:"xs*_c_full.py"`
 	BasicJavaFullPattern string `envconfig:"STRATEGY_POV_BASIC_JAVA_FULL_PATTERN" default:"xs*_java_full.py"`
 	BasicFullPattern     string `envconfig:"STRATEGY_POV_BASIC_FULL_PATTERN" default:"xs*_full.py"`
 
 	// Advanced POV strategy patterns (as* strategies)
-	AdvancedDeltaPattern string `envconfig:"STRATEGY_POV_ADVANCED_DELTA_PATTERN" default:"as*_delta.py"`
+	AdvancedDeltaPattern string `envconfig:"STRATEGY_POV_ADVANCED_DELTA_PATTERN" default:"xs0_delta.py"`
 	AdvancedFullPattern  string `envconfig:"STRATEGY_POV_ADVANCED_FULL_PATTERN" default:"as*_full.py"`
 
 	// Strategy selection (empty, "all", "none", or specific strategy name)

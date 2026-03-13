@@ -259,6 +259,17 @@ export FUZZER_DISCOVERY_MODE=auto
 export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
 export WORKSPACE="$WORKSPACE"
 
+# Strategy configuration — match original .env.example defaults:
+#   Basic delta: xs*_delta_new.py (no match in jeff/ → basic phase skipped)
+#   Advanced delta: xs0_delta.py (runs in advanced phase with multi-round budget)
+#   Advanced full: as0_full.py
+export STRATEGY_POV_ADVANCED_DELTA_PATTERN="${STRATEGY_POV_ADVANCED_DELTA_PATTERN:-xs0_delta.py}"
+export STRATEGY_POV_ADVANCED_FULL_PATTERN="${STRATEGY_POV_ADVANCED_FULL_PATTERN:-as0_full.py}"
+export STRATEGY_PATCH_DELTA_PATTERN="${STRATEGY_PATCH_DELTA_PATTERN:-patch0_delta.py}"
+export STRATEGY_PATCH_FULL_PATTERN="${STRATEGY_PATCH_FULL_PATTERN:-patch0_full.py}"
+export STRATEGY_XPATCH_SELECTED="${STRATEGY_XPATCH_SELECTED:-none}"
+export STRATEGY_ENABLE_PATCHING="${STRATEGY_ENABLE_PATCHING:-true}"
+
 # LLM configuration: use oss-crs LiteLLM proxy if available
 if [ -n "$OSS_CRS_LLM_API_URL" ] && [ -n "$OSS_CRS_LLM_API_KEY" ]; then
     echo "[fuzzing-brain] Configuring LLM via oss-crs proxy: $OSS_CRS_LLM_API_URL"
