@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Parse command line flags
-	modelFlag := flag.String("model", "", "Specify the model to use (e.g., claude-sonnet-4-20250514, gpt-4o, gemini-2.5-pro)")
+	modelFlag := flag.String("model", "", "Specify the model to use (e.g., claude-sonnet-4-6, gpt-4o, gemini-2.5-pro)")
 	mFlag := flag.String("m", "", "Specify the model to use (shorthand for --model)")
 	flag.Parse()
 

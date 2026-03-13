@@ -42,7 +42,7 @@ class LLMClient:
         openai/ prefix so the proxy handles provider routing.
         """
         if model_name is None:
-            model_name = self.config.models[0] if self.config.models else "claude-sonnet-4-20250514"
+            model_name = self.config.models[0] if self.config.models else "claude-sonnet-4-6"
 
         with self.tracer.start_as_current_span("genai") as span:
             span.set_attribute("crs.action.category", "fuzzing")

@@ -1529,10 +1529,10 @@ func CheckSarifFalsePositive(taskID string, ctxs *[]models.CodeContext, broadcas
 }
 
 var (
-    CLAUDE_OPUS_MODEL          = "claude-opus-4-20250514"
-    CLAUDE_SONNET_4_MODEL          = "claude-sonnet-4-20250514"
+    CLAUDE_OPUS_MODEL          = "claude-opus-4-6"
+    CLAUDE_SONNET_4_MODEL          = "claude-sonnet-4-6"
 	CLAUDE_MODEL          = "claude-3-7-sonnet-20250219"
-	OPENAI_MODEL          = "chatgpt-4o-latest"
+	OPENAI_MODEL          = "gpt-4o"
 	GEMINI_MODEL_PRO_25   = "gemini-2.5-pro"
     GEMINI_MODEL_FLASH   = "gemini-2.5-flash"
     OPENAI_MODEL_O3 = "o3"
@@ -1929,7 +1929,7 @@ func (h *Handler) compareCrashTraces0(trace1, trace2 string) (bool, error) {
 %s`, trace1, trace2)
 
     reqBody := Request{
-        Model: "claude-3-7-sonnet-latest",
+        Model: "claude-sonnet-4-6",
         Messages: []Message{
             {
                 Role:    "user",
