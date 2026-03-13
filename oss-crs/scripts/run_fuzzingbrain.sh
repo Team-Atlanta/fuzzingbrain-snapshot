@@ -291,8 +291,8 @@ if [ -n "$OSS_CRS_LLM_API_URL" ] && [ -n "$OSS_CRS_LLM_API_KEY" ]; then
     export OPENAI_API_KEY="${OSS_CRS_LLM_API_KEY}"
     export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$OSS_CRS_LLM_API_KEY}"
     export GEMINI_API_KEY="${GEMINI_API_KEY:-$OSS_CRS_LLM_API_KEY}"
-    # Default model — override via AI_MODEL env or compose additional_env
-    export AI_MODEL="${AI_MODEL:-gemini-2.5-flash}"
+    # AI_MODEL: use Go default (claude-sonnet-4-20250514) unless overridden
+    # via AI_MODEL env or compose additional_env
 fi
 
 # Per-fuzzer timeout (defaults to 60 minutes if not set)
