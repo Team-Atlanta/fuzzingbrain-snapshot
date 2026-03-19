@@ -58,13 +58,12 @@ libCRS download-build-output fetch /bootup/fetch 2>/dev/null || true
 ###############################################################################
 # 3. Register submission directories with libCRS
 ###############################################################################
-mkdir -p /artifacts/povs /artifacts/seeds /artifacts/patches
+mkdir -p /artifacts/povs /artifacts/patches
 libCRS register-submit-dir pov /artifacts/povs &
 SUBMIT_POV_PID=$!
-libCRS register-submit-dir seed /artifacts/seeds &
-SUBMIT_SEED_PID=$!
 libCRS register-submit-dir patch /artifacts/patches &
 SUBMIT_PATCH_PID=$!
+# Seed submit/fetch registered below after WORKSPACE and HARNESS are known
 
 ###############################################################################
 # 4. Fetch any bootup data (diffs, seeds, POVs)
@@ -326,7 +325,17 @@ _forward_artifacts &
 FORWARD_PID=$!
 
 ###############################################################################
-# 9. Run FuzzingBrain
+# 9. Register seed exchange with libCRS
+#    FuzzingBrain stores corpus at $WORKSPACE/${HARNESS}_corpus (created by Go)
+###############################################################################
+CORPUS_DIR="$WORKSPACE/${HARNESS}_corpus"
+mkdir -p "$CORPUS_DIR"
+libCRS register-submit-dir seed "$CORPUS_DIR" &
+SUBMIT_SEED_PID=$!
+libCRS register-fetch-dir seed "$CORPUS_DIR" &
+
+###############################################################################
+# 10. Run FuzzingBrain
 ###############################################################################
 echo "[fuzzing-brain] Starting FuzzingBrain CRS..."
 echo "[fuzzing-brain] Workspace: $WORKSPACE"
