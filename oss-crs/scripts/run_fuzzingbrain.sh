@@ -326,12 +326,18 @@ FORWARD_PID=$!
 
 ###############################################################################
 # 9. Register seed exchange with libCRS
-#    FuzzingBrain stores corpus at $WORKSPACE/${HARNESS}_corpus (created by Go)
+#    FuzzingBrain has two seed directories:
+#    - ${HARNESS}_corpus:      fuzzer persistent corpus (runtime seeds)
+#    - ${HARNESS}_seed_corpus: LLM-generated seeds fed to fuzzer as additional_corpus
+#    Submit from both so ensemble partners get all seeds.
+#    Fetch into _corpus (fuzzer picks up via -reload=300).
 ###############################################################################
 CORPUS_DIR="$WORKSPACE/${HARNESS}_corpus"
-mkdir -p "$CORPUS_DIR"
+SEED_CORPUS_DIR="$WORKSPACE/${HARNESS}_seed_corpus"
+mkdir -p "$CORPUS_DIR" "$SEED_CORPUS_DIR"
 libCRS register-submit-dir seed "$CORPUS_DIR" &
 SUBMIT_SEED_PID=$!
+libCRS register-submit-dir seed "$SEED_CORPUS_DIR" &
 libCRS register-fetch-dir seed "$CORPUS_DIR" &
 
 ###############################################################################
