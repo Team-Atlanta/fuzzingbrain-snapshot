@@ -1,7 +1,6 @@
 name: fuzzing-brain
 type:
   - bug-finding
-  - bug-fixing
 version: 1.0.0
 docker_registry: local
 
