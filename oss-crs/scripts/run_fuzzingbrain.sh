@@ -266,7 +266,13 @@ export CRS_WORKDIR=/crs-workdir
 export OTEL_SDK_DISABLED=true
 export FUZZER_SANITIZERS="${SANITIZER_NAME}"
 export FUZZER_PREFERRED_SANITIZER="${SANITIZER_NAME}"
-export FUZZER_DISCOVERY_MODE=auto
+# Only run the harness specified by oss-crs (avoid wasting resources on other fuzzers)
+if [ -n "$HARNESS" ]; then
+    export FUZZER_SELECTED="${HARNESS}"
+    export FUZZER_DISCOVERY_MODE=config
+else
+    export FUZZER_DISCOVERY_MODE=auto
+fi
 export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
 export WORKSPACE="$WORKSPACE"
 
