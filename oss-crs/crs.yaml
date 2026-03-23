@@ -14,7 +14,6 @@ target_build_phase:
     outputs:
       - build
       - src
-      - fetch
 
 crs_run_phase:
   fuzzer:

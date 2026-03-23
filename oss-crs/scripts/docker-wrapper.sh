@@ -4,8 +4,8 @@
 #
 # - `docker images <name> --format ...`  → returns a fake image name
 # - `docker run -v host:/container ... IMAGE /container/binary args`
-#     → translates container paths to host paths via -v mappings, then
-#       runs the binary directly
+#     → uses unshare + bind mounts to make container paths real, then
+#       runs the binary directly (no path translation needed)
 # - Other commands → passed through to real docker (may fail, that's OK)
 
 REAL_DOCKER="${REAL_DOCKER_PATH:-}"
@@ -28,7 +28,8 @@ case "${1:-}" in
         IMAGE_NAME=""
         while [ $# -gt 0 ]; do
             case "$1" in
-                --format|--format=*) shift ;; # skip format flag and value
+                --format) shift 2 ;; # skip --format and its value
+                --format=*) shift ;;
                 -*) shift ;;
                 *)
                     if [ -z "$IMAGE_NAME" ]; then
@@ -58,17 +59,11 @@ case "${1:-}" in
         declare -a VOL_CONT=()
         declare -a ENV_PAIRS=()
         IMAGE=""
-        SKIP_NEXT=""
 
         while [ $# -gt 0 ]; do
-            if [ -n "$SKIP_NEXT" ]; then
-                SKIP_NEXT=""
-                shift
-                continue
-            fi
             case "$1" in
                 --rm|--privileged) shift ;;
-                --platform) shift 2 ;;   # --platform linux/amd64
+                --platform) shift 2 ;;
                 --platform=*) shift ;;
                 --shm-size|--shm-size=*) shift ;;
                 -e)
@@ -76,9 +71,7 @@ case "${1:-}" in
                     shift 2
                     ;;
                 -v)
-                    # Parse host:container (handle paths with colons carefully)
                     local_vol="$2"
-                    # Split on first colon only
                     host_part="${local_vol%%:*}"
                     cont_part="${local_vol#*:}"
                     VOL_HOST+=("$host_part")
@@ -86,7 +79,6 @@ case "${1:-}" in
                     shift 2
                     ;;
                 -*)
-                    # Unknown flag — check if next arg looks like a value
                     if [ $# -gt 1 ] && [[ "$2" != -* ]]; then
                         shift 2
                     else
@@ -94,7 +86,6 @@ case "${1:-}" in
                     fi
                     ;;
                 *)
-                    # First positional arg = image name; rest = command
                     IMAGE="$1"
                     shift
                     break
@@ -102,69 +93,40 @@ case "${1:-}" in
             esac
         done
 
-        # Now $@ is the command to run (e.g. /out/fuzzer -timeout=30 /out/blob)
-
-        # Set environment variables
-        for ev in "${ENV_PAIRS[@]}"; do
-            export "$ev"
-        done
-
-        # Translate a container path to host path using volume mappings
-        _translate() {
-            local p="$1"
-            local i
-            for i in "${!VOL_CONT[@]}"; do
-                local cpath="${VOL_CONT[$i]}"
-                local hpath="${VOL_HOST[$i]}"
-                # Exact match or prefix match with /
-                if [ "$p" = "$cpath" ]; then
-                    echo "$hpath"
-                    return
-                elif [[ "$p" == "${cpath}/"* ]]; then
-                    echo "${hpath}/${p#${cpath}/}"
-                    return
-                fi
-            done
-            # No translation needed
-            echo "$p"
-        }
+        # $@ is now the command (e.g. /out/fuzzer -timeout=30 /out/blob)
 
         if [ $# -eq 0 ]; then
             echo "docker-wrapper: no command after image name" >&2
             exit 1
         fi
 
-        # Check if command is "bash -c ..." (coverage post-processing etc.)
-        if [ "$1" = "bash" ] && [ "${2:-}" = "-c" ]; then
-            # Translate paths inside the shell command string
-            SHELL_CMD="$3"
-            for i in "${!VOL_CONT[@]}"; do
-                cpath="${VOL_CONT[$i]}"
-                hpath="${VOL_HOST[$i]}"
-                SHELL_CMD="${SHELL_CMD//${cpath}/${hpath}}"
-            done
-            exec bash -c "$SHELL_CMD"
-        fi
-
-        # Translate binary path and all arguments
-        REAL_BIN="$(_translate "$1")"
-        shift
-        REAL_ARGS=()
-        for arg in "$@"; do
-            REAL_ARGS+=("$(_translate "$arg")")
+        # Set environment variables
+        for ev in "${ENV_PAIRS[@]}"; do
+            export "$ev"
         done
 
-        # Make sure binary is executable
-        if [ -f "$REAL_BIN" ] && [ ! -x "$REAL_BIN" ]; then
-            chmod +x "$REAL_BIN"
+        # Build mount commands: create mount points and bind-mount host→container paths.
+        # This makes container paths (like /out, /src, /work) real on the filesystem
+        # so the binary can use them natively — no path translation needed.
+        MOUNT_SCRIPT=""
+        for i in "${!VOL_HOST[@]}"; do
+            hpath="${VOL_HOST[$i]}"
+            cpath="${VOL_CONT[$i]}"
+            # Ensure both host dir and mount point exist
+            mkdir -p "$hpath" 2>/dev/null || true
+            mkdir -p "$cpath" 2>/dev/null || true
+            MOUNT_SCRIPT="${MOUNT_SCRIPT}mount --bind '${hpath}' '${cpath}' && "
+        done
+
+        # Make sure the binary is executable (use container path directly)
+        BIN="$1"
+        shift
+        if [ -f "$BIN" ] && [ ! -x "$BIN" ]; then
+            chmod +x "$BIN"
         fi
 
-        if [ ! -f "$REAL_BIN" ]; then
-            echo "docker-wrapper: binary not found: $REAL_BIN" >&2
-            exit 1
-        fi
-
-        exec "$REAL_BIN" "${REAL_ARGS[@]}"
+        # Run in an isolated mount namespace so bind mounts don't leak
+        exec unshare -m sh -c "${MOUNT_SCRIPT}exec \"\$@\"" -- "$BIN" "$@"
         ;;
 
     build)

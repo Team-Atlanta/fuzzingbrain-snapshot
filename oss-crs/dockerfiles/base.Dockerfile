@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io \
     docker-buildx \
     sudo \
+    llvm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

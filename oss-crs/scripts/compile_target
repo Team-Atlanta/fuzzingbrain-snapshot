@@ -2,10 +2,36 @@
 # Build-phase entry point: compile the target and submit build + src outputs.
 set -e
 
-# Run the standard oss-fuzz compile
+# Run the standard oss-fuzz compile (address sanitizer)
 compile
 
-# Submit build artifacts (harness binaries, etc.)
+# Build coverage-instrumented fuzzers for control flow analysis.
+# Save address outputs first, then recompile with SANITIZER=coverage,
+# rename coverage binaries with -coverage suffix, and restore.
+ADDR_BACKUP=$(mktemp -d)
+cp -a "$OUT"/* "$ADDR_BACKUP/" 2>/dev/null || true
+
+ORIG_SANITIZER="${SANITIZER}"
+export SANITIZER=coverage
+if compile 2>/dev/null; then
+    for f in "$OUT"/*; do
+        if [ -f "$f" ] && [ -x "$f" ]; then
+            fname="$(basename "$f")"
+            cp "$f" "$ADDR_BACKUP/${fname}-coverage" 2>/dev/null || true
+        fi
+    done
+    echo "[compile_target] Coverage fuzzers built successfully"
+else
+    echo "[compile_target] Coverage build failed (non-fatal, control flow analysis will be skipped)"
+fi
+export SANITIZER="${ORIG_SANITIZER}"
+
+# Restore address outputs + coverage binaries
+rm -rf "$OUT"/*
+cp -a "$ADDR_BACKUP"/* "$OUT"/ 2>/dev/null || true
+rm -rf "$ADDR_BACKUP"
+
+# Submit build artifacts (address fuzzers + coverage fuzzers)
 libCRS submit-build-output "$OUT" build
 
 # Submit source tree for later analysis
