@@ -26,7 +26,6 @@ supported_target:
   language:
     - c
     - c++
-    - jvm
   sanitizer:
     - address
   architecture:
