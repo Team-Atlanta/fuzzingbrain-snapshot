@@ -5,15 +5,18 @@ FROM golang:1.22 AS go-builder
 
 WORKDIR /app
 
-# Copy go.mod and go.sum from the crs directory
+# Build CRS local binary
 COPY crs/go.mod crs/go.sum ./
 RUN go mod download
-
-# Copy the CRS source code
 COPY crs/ ./
-
-# Build the local CRS binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o crs-local ./cmd/local
+
+# Build static analysis service
+WORKDIR /static-analysis
+COPY static-analysis/go.mod static-analysis/go.sum ./
+RUN go mod download
+COPY static-analysis/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o static-analysis-local ./cmd/server
 
 ###############################################################################
 # Stage 2: Runtime image (Debian-based for libCRS compatibility)
@@ -64,8 +67,9 @@ ENV PATH="/tmp/crs_venv/bin:${PATH}"
 # Set working directory
 WORKDIR /app
 
-# Copy Go binary
+# Copy Go binaries
 COPY --from=go-builder /app/crs-local /app/crs-local
+COPY --from=go-builder /static-analysis/static-analysis-local /app/static-analysis-local
 
 # Copy VERSION file
 COPY crs/VERSION /app/VERSION

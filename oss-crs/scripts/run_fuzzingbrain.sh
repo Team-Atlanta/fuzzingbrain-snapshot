@@ -246,7 +246,19 @@ export PATH="$WRAPPER_DIR:$PATH"
 echo "[fuzzing-brain] Installed docker wrapper (direct execution mode)"
 
 ###############################################################################
-# 7. Configure environment for FuzzingBrain
+# 7. Start static analysis service (needed for full scan strategies)
+###############################################################################
+if [ -x /app/static-analysis-local ]; then
+    echo "[fuzzing-brain] Starting static analysis service on :7082..."
+    /app/static-analysis-local &
+    ANALYSIS_PID=$!
+else
+    echo "[fuzzing-brain] WARNING: static-analysis-local not found, full scan analysis will be limited"
+    ANALYSIS_PID=""
+fi
+
+###############################################################################
+# 8. Configure environment for FuzzingBrain
 ###############################################################################
 export LOCAL_TEST=1
 export STRATEGY_BASE_DIR=/app/strategy
@@ -372,6 +384,6 @@ echo "[fuzzing-brain] Waiting for libCRS to sync artifacts..."
 sleep 10
 
 # Cleanup
-kill $SUBMIT_POV_PID $SUBMIT_SEED_PID $SUBMIT_PATCH_PID $FORWARD_PID 2>/dev/null || true
+kill $SUBMIT_POV_PID $SUBMIT_SEED_PID $SUBMIT_PATCH_PID $FORWARD_PID $ANALYSIS_PID 2>/dev/null || true
 
 exit $EXIT_CODE
