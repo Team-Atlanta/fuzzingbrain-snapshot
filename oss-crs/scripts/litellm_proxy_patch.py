@@ -16,7 +16,7 @@ How it works:
 import os as _os
 
 _PROXY_URL = _os.environ.get("OSS_CRS_LLM_API_URL")
-_PROXY_KEY = _os.environ.get("OSS_CRS_LLM_API_KEY", "")
+_PROXY_KEY = open(_os.environ["OSS_CRS_LLM_API_KEY_FILE"]).read().strip() if _os.environ.get("OSS_CRS_LLM_API_KEY_FILE") else _os.environ.get("OSS_CRS_LLM_API_KEY", "")
 
 if _PROXY_URL:
     # ── 1. Patch litellm.completion ──────────────────────────────────

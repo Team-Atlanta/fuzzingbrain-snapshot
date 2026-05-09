@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 # Proxy configuration (set by oss-crs framework)
 _PROXY_URL = os.environ.get("OSS_CRS_LLM_API_URL")
-_PROXY_KEY = os.environ.get("OSS_CRS_LLM_API_KEY", "")
+_PROXY_KEY = open(os.environ["OSS_CRS_LLM_API_KEY_FILE"]).read().strip() if os.environ.get("OSS_CRS_LLM_API_KEY_FILE") else os.environ.get("OSS_CRS_LLM_API_KEY", "")
 
 
 class LLMClient:

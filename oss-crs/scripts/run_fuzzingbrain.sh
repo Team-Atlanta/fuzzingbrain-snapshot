@@ -288,6 +288,10 @@ export STRATEGY_XPATCH_SELECTED="${STRATEGY_XPATCH_SELECTED:-none}"
 export STRATEGY_ENABLE_PATCHING="${STRATEGY_ENABLE_PATCHING:-true}"
 
 # LLM configuration: use oss-crs LiteLLM proxy if available
+if [ -n "$OSS_CRS_LLM_API_KEY_FILE" ] && [ -f "$OSS_CRS_LLM_API_KEY_FILE" ]; then
+    OSS_CRS_LLM_API_KEY="$(cat "$OSS_CRS_LLM_API_KEY_FILE")"
+    export OSS_CRS_LLM_API_KEY
+fi
 if [ -n "$OSS_CRS_LLM_API_URL" ] && [ -n "$OSS_CRS_LLM_API_KEY" ]; then
     echo "[fuzzing-brain] Configuring LLM via oss-crs proxy: $OSS_CRS_LLM_API_URL"
     # Install usercustomize.py to monkey-patch litellm.completion and
